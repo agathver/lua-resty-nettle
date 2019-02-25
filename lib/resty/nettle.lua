@@ -1,8 +1,10 @@
 local require             = require
 local nettle, padding     = { _VERSION = "0.105" }, {}
+
 nettle.aead               = require "resty.nettle.aead"
 nettle.aes                = require "resty.nettle.aes"
 nettle.arcfour            = require "resty.nettle.arcfour"
+nettle.rc4                = nettle.arcfour
 nettle.asn1               = require "resty.nettle.asn1"
 nettle.base16             = require "resty.nettle.base16"
 nettle.base64             = require "resty.nettle.base64"
@@ -56,4 +58,5 @@ padding.pkcs7             = require "resty.nettle.padding.pkcs7"
 padding.spacepadding      = require "resty.nettle.padding.spacepadding"
 padding.zeropadding       = require "resty.nettle.padding.zeropadding"
 nettle.padding            = padding
+
 return nettle

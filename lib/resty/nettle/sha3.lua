@@ -1,93 +1,50 @@
+local types        = require "resty.nettle.types.common"
+local context      = require "resty.nettle.types.sha3"
 local lib          = require "resty.nettle.library"
 local ffi          = require "ffi"
 local ffi_new      = ffi.new
-local ffi_typeof   = ffi.typeof
-local ffi_cdef     = ffi.cdef
 local ffi_str      = ffi.string
 local setmetatable = setmetatable
 
-ffi_cdef[[
-typedef struct sha3_state {
-  uint64_t a[25];
-} NETTLE_SHA3_STATE;
-typedef struct sha3_224_ctx {
-  struct sha3_state state;
-  unsigned index;
-  uint8_t block[144];
-} NETTLE_SHA3_224_CTX;
-void nettle_sha3_224_init(struct sha3_224_ctx *ctx);
-void nettle_sha3_224_update(struct sha3_224_ctx *ctx, size_t length, const uint8_t *data);
-void nettle_sha3_224_digest(struct sha3_224_ctx *ctx, size_t length, uint8_t *digest);
-typedef struct sha3_256_ctx {
-  struct sha3_state state;
-  unsigned index;
-  uint8_t block[136];
-} NETTLE_SHA3_256_CTX;
-void nettle_sha3_256_init(struct sha3_256_ctx *ctx);
-void nettle_sha3_256_update(struct sha3_256_ctx *ctx, size_t length, const uint8_t *data);
-void nettle_sha3_256_digest(struct sha3_256_ctx *ctx, size_t length, uint8_t *digest);
-typedef struct sha3_384_ctx {
-  struct sha3_state state;
-  unsigned index;
-  uint8_t block[104];
-} NETTLE_SHA3_384_CTX;
-void nettle_sha3_384_init(struct sha3_384_ctx *ctx);
-void nettle_sha3_384_update(struct sha3_384_ctx *ctx, size_t length, const uint8_t *data);
-void nettle_sha3_384_digest(struct sha3_384_ctx *ctx, size_t length, uint8_t *digest);
-typedef struct sha3_512_ctx {
-  struct sha3_state state;
-  unsigned index;
-  uint8_t block[72];
-} NETTLE_SHA3_512_CTX;
-void nettle_sha3_512_init(struct sha3_512_ctx *ctx);
-void nettle_sha3_512_update(struct sha3_512_ctx *ctx, size_t length, const uint8_t *data);
-void nettle_sha3_512_digest(struct sha3_512_ctx *ctx, size_t length, uint8_t *digest);
-]]
-
-local uint8t = ffi_typeof "uint8_t[?]"
-local ctx224 = ffi_typeof "NETTLE_SHA3_224_CTX[1]"
-local ctx256 = ffi_typeof "NETTLE_SHA3_256_CTX[1]"
-local ctx384 = ffi_typeof "NETTLE_SHA3_384_CTX[1]"
-local ctx512 = ffi_typeof "NETTLE_SHA3_512_CTX[1]"
-local buf224 = ffi_new(uint8t, 28)
-local buf256 = ffi_new(uint8t, 32)
-local buf384 = ffi_new(uint8t, 48)
-local buf512 = ffi_new(uint8t, 64)
-
 local hashes = {
-    [224]       = {
+    sha3_224    = {
         length  = 28,
-        context = ctx224,
-        buffer  = buf224,
+        context = context.sha3_224,
+        buffer  = types.uint8_t_224,
         init    = lib.nettle_sha3_224_init,
         update  = lib.nettle_sha3_224_update,
         digest  = lib.nettle_sha3_224_digest
     },
-    [256]       = {
+    sha3_256    = {
         length  = 32,
-        context = ctx256,
-        buffer  = buf256,
+        context = context.sha3_256,
+        buffer  = types.uint8_t_256,
         init    = lib.nettle_sha3_256_init,
         update  = lib.nettle_sha3_256_update,
         digest  = lib.nettle_sha3_256_digest
     },
-    [384]       = {
+    sha3_384    = {
         length  = 48,
-        context = ctx384,
-        buffer  = buf384,
+        context = context.sha3_384,
+        buffer  = types.uint8_t_384,
         init    = lib.nettle_sha3_384_init,
         update  = lib.nettle_sha3_384_update,
         digest  = lib.nettle_sha3_384_digest
     },
-    [512]       = {
+    sha3_512    = {
         length  = 64,
-        context = ctx512,
-        buffer  = buf512,
+        context = context.sha3_512,
+        buffer  = types.uint8_t_512,
         init    = lib.nettle_sha3_512_init,
         update  = lib.nettle_sha3_512_update,
         digest  = lib.nettle_sha3_512_digest
-    }
+    },
 }
+
+hashes[224] = hashes.sha3_224
+hashes[256] = hashes.sha3_256
+hashes[384] = hashes.sha3_384
+hashes[512] = hashes.sha3_512
 
 local sha3 = {}
 sha3.__index = sha3
@@ -119,9 +76,9 @@ local function factory(hash)
 end
 
 return setmetatable({
-    sha224     = factory(hashes[224]),
-    sha256     = factory(hashes[256]),
-    sha384     = factory(hashes[384]),
+    sha224     = factory(hashes.sha3_224),
+    sha256     = factory(hashes.sha3_256),
+    sha384     = factory(hashes.sha3_384),
     sha512     = factory(hashes[512])
 }, { __call = function(_, bits, data, len)
     local hash = hashes[bits]

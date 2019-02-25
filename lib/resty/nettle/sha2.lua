@@ -1,88 +1,60 @@
-require "resty.nettle.types.sha2"
-
+local types        = require "resty.nettle.types.common"
+local context      = require "resty.nettle.types.sha2"
 local lib          = require "resty.nettle.library"
 local ffi          = require "ffi"
 local ffi_new      = ffi.new
-local ffi_typeof   = ffi.typeof
-local ffi_cdef     = ffi.cdef
 local ffi_str      = ffi.string
 local setmetatable = setmetatable
-
-
-ffi_cdef[[
-void nettle_sha224_init(struct sha256_ctx *ctx);
-void nettle_sha224_digest(struct sha256_ctx *ctx, size_t length, uint8_t *digest);
-void nettle_sha256_init(struct sha256_ctx *ctx);
-void nettle_sha256_update(struct sha256_ctx *ctx, size_t length, const uint8_t *data);
-void nettle_sha256_digest(struct sha256_ctx *ctx, size_t length, uint8_t *digest);
-void nettle_sha384_init(struct sha512_ctx *ctx);
-void nettle_sha384_digest(struct sha512_ctx *ctx, size_t length, uint8_t *digest);
-void nettle_sha512_init(struct sha512_ctx *ctx);
-void nettle_sha512_update(struct sha512_ctx *ctx, size_t length, const uint8_t *data);
-void nettle_sha512_digest(struct sha512_ctx *ctx, size_t length, uint8_t *digest);
-void nettle_sha512_224_init(struct sha512_ctx *ctx);
-void nettle_sha512_224_digest(struct sha512_ctx *ctx, size_t length, uint8_t *digest);
-void nettle_sha512_256_init(struct sha512_ctx *ctx);
-void nettle_sha512_256_digest(struct sha512_ctx *ctx, size_t length, uint8_t *digest);
-]]
-
-local uint8t = ffi_typeof "uint8_t[?]"
-local ctx256 = ffi_typeof "NETTLE_SHA256_CTX[1]"
-local ctx512 = ffi_typeof "NETTLE_SHA512_CTX[1]"
-local buf224 = ffi_new(uint8t, 28)
-local buf256 = ffi_new(uint8t, 32)
-local buf384 = ffi_new(uint8t, 48)
-local buf512 = ffi_new(uint8t, 64)
 
 local hashes = {
     sha224      = {
         length  = 28,
-        context = ctx256,
-        buffer  = buf224,
+        context = context.sha256,
+        buffer  = types.uint8_t_224,
         init    = lib.nettle_sha224_init,
         update  = lib.nettle_sha256_update,
         digest  = lib.nettle_sha224_digest
     },
     sha256      = {
         length  = 32,
-        context = ctx256,
-        buffer  = buf256,
+        context = context.sha256,
+        buffer  = types.uint8_t_256,
         init    = lib.nettle_sha256_init,
         update  = lib.nettle_sha256_update,
         digest  = lib.nettle_sha256_digest
     },
     sha384      = {
         length  = 48,
-        context = ctx512,
-        buffer  = buf384,
+        context = context.sha512,
+        buffer  = types.uint8_t_384,
         init    = lib.nettle_sha384_init,
         update  = lib.nettle_sha512_update,
         digest  = lib.nettle_sha384_digest
     },
     sha512      = {
         length  = 64,
-        context = ctx512,
-        buffer  = buf512,
+        context = context.sha512,
+        buffer  = types.uint8_t_512,
         init    = lib.nettle_sha512_init,
         update  = lib.nettle_sha512_update,
         digest  = lib.nettle_sha512_digest
     },
     sha512_224  = {
         length  = 28,
-        context = ctx512,
-        buffer  = buf224,
+        context = context.sha512,
+        buffer  = types.uint8_t_224,
         init    = lib.nettle_sha512_224_init,
         update  = lib.nettle_sha512_update,
         digest  = lib.nettle_sha512_224_digest
     },
     sha512_256  = {
         length  = 32,
-        context = ctx512,
-        buffer  = buf256,
+        context = context.sha512,
+        buffer  = types.uint8_t_256,
         init    = lib.nettle_sha512_256_init,
         update  = lib.nettle_sha512_update,
         digest  = lib.nettle_sha512_256_digest
-    }
+    },
 }
 
 local sha2 = {}

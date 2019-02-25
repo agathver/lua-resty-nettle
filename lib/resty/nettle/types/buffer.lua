@@ -1,4 +1,5 @@
-require "resty.nettle.library"
+require "resty.nettle.types.nettle-types"
+
 local ffi      = require "ffi"
 local ffi_cdef = ffi.cdef
 

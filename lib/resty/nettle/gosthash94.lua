@@ -1,38 +1,24 @@
+local types        = require "resty.nettle.types.common"
+local context      = require "resty.nettle.types.gosthash94"
 local lib          = require "resty.nettle.library"
 local ffi          = require "ffi"
 local ffi_new      = ffi.new
-local ffi_typeof   = ffi.typeof
-local ffi_cdef     = ffi.cdef
 local ffi_str      = ffi.string
 local setmetatable = setmetatable
 
-ffi_cdef[[
-typedef struct gosthash94_ctx {
-  uint32_t hash[8];
-  uint32_t sum[8];
-  uint8_t message[32];
-  uint64_t length;
-} NETTLE_GOSTHASH94_CTX;
-void nettle_gosthash94_init(struct gosthash94_ctx *ctx);
-void nettle_gosthash94_update(struct gosthash94_ctx *ctx, size_t length, const uint8_t *data);
-void nettle_gosthash94_digest(struct gosthash94_ctx *ctx, size_t length, uint8_t *digest);
-]]
-
-local ctx = ffi_typeof "NETTLE_GOSTHASH94_CTX[1]"
-local buf = ffi_new("uint8_t[?]", 32)
 local gosthash94 = setmetatable({}, {
     __call = function(_, data, len)
-        local context = ffi_new(ctx)
+        local context = ffi_new(context)
         lib.nettle_gosthash94_init(context)
         lib.nettle_gosthash94_update(context, len or #data, data)
-        lib.nettle_gosthash94_digest(context, 32, buf)
-        return ffi_str(buf, 32)
+        lib.nettle_gosthash94_digest(context, 32, types.uint8_t_256)
+        return ffi_str(types.uint8_t_256, 32)
     end
 })
 gosthash94.__index = gosthash94
 
 function gosthash94.new()
-    local self = setmetatable({ context = ffi_new(ctx) }, gosthash94)
+    local self = setmetatable({ context = ffi_new(context) }, gosthash94)
     lib.nettle_gosthash94_init(self.context)
     return self
 end
@@ -42,8 +28,8 @@ function gosthash94:update(data, len)
 end
 
 function gosthash94:digest()
-    lib.nettle_gosthash94_digest(self.context, 32, buf)
-    return ffi_str(buf, 32)
+    lib.nettle_gosthash94_digest(self.context, 32, types.uint8_t_256)
+    return ffi_str(types.uint8_t_256, 32)
 end
 
 return gosthash94

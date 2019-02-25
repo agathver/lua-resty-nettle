@@ -1,27 +1,12 @@
-require "resty.nettle.types.des"
-
+local types        = require "resty.nettle.types.common"
+local context      = require "resty.nettle.types.des"
 local lib          = require "resty.nettle.library"
 local ffi          = require "ffi"
 local ffi_new      = ffi.new
-local ffi_typeof   = ffi.typeof
 local ffi_copy     = ffi.copy
-local ffi_cdef     = ffi.cdef
 local ffi_str      = ffi.string
 local ceil         = math.ceil
 local setmetatable = setmetatable
-
-ffi_cdef[[
-int  nettle_des_set_key(struct des_ctx *ctx, const uint8_t *key);
-void nettle_des_encrypt(const struct des_ctx *ctx, size_t length, uint8_t *dst, const uint8_t *src);
-void nettle_des_decrypt(const struct des_ctx *ctx, size_t length, uint8_t *dst, const uint8_t *src);
-int  nettle_des_check_parity(size_t length, const uint8_t *key);
-void nettle_des_fix_parity(size_t length, uint8_t *dst, const uint8_t *src);
-int  nettle_des3_set_key(struct des3_ctx *ctx, const uint8_t *key);
-void nettle_des3_encrypt(const struct des3_ctx *ctx, size_t length, uint8_t *dst, const uint8_t *src);
-void nettle_des3_decrypt(const struct des3_ctx *ctx, size_t length, uint8_t *dst, const uint8_t *src);
-]]
-
-local uint8t = ffi_typeof "uint8_t[?]"
 
 local des = {}
 des.__index = des
@@ -29,14 +14,14 @@ des.__index = des
 local ciphers = {
     des = {
         ecb = {
-            context = ffi_typeof "NETTLE_DES_CTX[1]",
+            context = context.des,
             setkey  = lib.nettle_des_set_key,
             encrypt = lib.nettle_des_encrypt,
             decrypt = lib.nettle_des_decrypt
         },
         cbc = {
             iv_size = 8,
-            context = ffi_typeof "NETTLE_DES_CTX[1]",
+            context = context.des,
             setkey  = lib.nettle_des_set_key,
             encrypt = lib.nettle_cbc_encrypt,
             decrypt = lib.nettle_cbc_decrypt,
@@ -47,7 +32,7 @@ local ciphers = {
         },
         ctr = {
             iv_size = 8,
-            context = ffi_typeof "NETTLE_DES_CTX[1]",
+            context = context.des,
             setkey  = lib.nettle_des_set_key,
             encrypt = lib.nettle_ctr_crypt,
             decrypt = lib.nettle_ctr_crypt,
@@ -59,14 +44,14 @@ local ciphers = {
     },
     des3 = {
         ecb = {
-            context = ffi_typeof "NETTLE_DES3_CTX[1]",
+            context = context.des3,
             setkey  = lib.nettle_des3_set_key,
             encrypt = lib.nettle_des3_encrypt,
             decrypt = lib.nettle_des3_decrypt
         },
         cbc = {
             iv_size = 8,
-            context = ffi_typeof "NETTLE_DES3_CTX[1]",
+            context = context.des3,
             setkey  = lib.nettle_des3_set_key,
             encrypt = lib.nettle_cbc_encrypt,
             decrypt = lib.nettle_cbc_decrypt,
@@ -77,7 +62,7 @@ local ciphers = {
         },
         ctr = {
             iv_size = 8,
-            context = ffi_typeof "NETTLE_DES3_CTX[1]",
+            context = context.des3,
             setkey  = lib.nettle_des3_set_key,
             encrypt = lib.nettle_ctr_crypt,
             decrypt = lib.nettle_ctr_crypt,
@@ -129,7 +114,7 @@ function des.fix_parity(src)
     if len ~= 8 and len ~= 24 then
         return nil, "the DES supported key size is 64 bits, and DES3 supported key size is 192 bits"
     end
-    local dst = ffi_new(uint8t, len)
+    local dst = ffi_new(types.uint8_t, len)
     lib.nettle_des_fix_parity(len, dst, src)
     return ffi_str(dst, len)
 end
@@ -139,12 +124,11 @@ function des:encrypt(src, len)
     local cipher  = self.cipher
     local context = self.context
     local dln = ceil(len / 8) * 8
-    local dst = ffi_new(uint8t, dln)
+    local dst = ffi_new(types.uint8_t, dln)
     ffi_copy(dst, src, len)
     if self.iv then
-        local iv = ffi_new(uint8t, 8)
-        ffi_copy(iv, self.iv, 8)
-        cipher.encrypt(context, cipher.cipher.encrypt, 8, iv, dln, dst, dst)
+        ffi_copy(types.uint8_t_64, self.iv, 8)
+        cipher.encrypt(context, cipher.cipher.encrypt, 8, types.uint8_t_64, dln, dst, dst)
     else
         cipher.encrypt(context, dln, dst, dst)
     end
@@ -156,11 +140,10 @@ function des:decrypt(src, len)
     local context = self.context
     len = len or #src
     local dln = ceil(len / 8) * 8
-    local dst = ffi_new(uint8t, dln)
+    local dst = ffi_new(types.uint8_t, dln)
     if self.iv then
-        local iv = ffi_new(uint8t, 8)
-        ffi_copy(iv, self.iv, 8)
-        cipher.decrypt(context, cipher.cipher.decrypt, 8, iv, dln, dst, src)
+        ffi_copy(types.uint8_t_64, self.iv, 8)
+        cipher.decrypt(context, cipher.cipher.decrypt, 8, types.uint8_t_64, dln, dst, src)
     else
         cipher.decrypt(context, dln, dst, src)
     end

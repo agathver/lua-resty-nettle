@@ -1,31 +1,13 @@
+local types        = require "resty.nettle.types.common"
+local context      = require "resty.nettle.types.base16"
 local lib          = require "resty.nettle.library"
 local ffi          = require "ffi"
 local ffi_new      = ffi.new
-local ffi_typeof   = ffi.typeof
-local ffi_cdef     = ffi.cdef
 local ffi_str      = ffi.string
 local byte         = string.byte
+local floor        = math.floor
 local tonumber     = tonumber
 local setmetatable = setmetatable
-
-ffi_cdef[[
-typedef struct base16_decode_ctx {
-  unsigned word;
-  unsigned bits;
-} NETTLE_BASE16_DECODE_CTX;
-void nettle_base16_encode_single(uint8_t *dst, uint8_t src);
-void nettle_base16_encode_update(uint8_t *dst, size_t length, const uint8_t *src);
-void nettle_base16_decode_init(struct base16_decode_ctx *ctx);
-int  nettle_base16_decode_single(struct base16_decode_ctx *ctx, uint8_t *dst, uint8_t src);
-int  nettle_base16_decode_update(struct base16_decode_ctx *ctx, size_t *dst_length, uint8_t *dst, size_t src_length, const uint8_t *src);
-int  nettle_base16_decode_final(struct base16_decode_ctx *ctx);
-]]
-local ctxdec = ffi_typeof "NETTLE_BASE16_DECODE_CTX[1]"
-
-local length = ffi_new "size_t[1]"
-local uint8t = ffi_typeof "uint8_t[?]"
-local buf8   = ffi_new(uint8t, 1)
-local buf16  = ffi_new(uint8t, 2)
 
 local encoder = {}
 encoder.__index = encoder
@@ -35,14 +17,14 @@ function encoder.new()
 end
 
 function encoder:single(src)
-    lib.nettle_base16_encode_single(buf16, (src:byte()))
-    return ffi_str(buf16, 2)
+    lib.nettle_base16_encode_single(types.char_16, (byte(src)))
+    return ffi_str(types.char_16, 2)
 end
 
 function encoder:update(src)
     local len = #src
     local dln = len * 2
-    local dst = ffi_new(uint8t, dln)
+    local dst = ffi_new(types.char, dln)
     lib.nettle_base16_encode_update(dst, len, src)
     return ffi_str(dst, dln)
 end
@@ -51,23 +33,23 @@ local decoder = {}
 decoder.__index = decoder
 
 function decoder.new()
-    local ctx = ffi_new(ctxdec)
+    local ctx = ffi_new(context)
     lib.nettle_base16_decode_init(ctx)
     return setmetatable({ context = ctx }, decoder)
 end
 
 function decoder:single(src)
-    local len = lib.nettle_base16_decode_single(self.context, buf8, byte(src))
-    return ffi_str(buf8, len), len
+    local len = lib.nettle_base16_decode_single(self.context, types.uint8_t_8, byte(src))
+    return ffi_str(types.uint8_t_8, len), len
 end
 
 function decoder:update(src)
     local len = #src
-    local dst = ffi_new(uint8t, (len + 1) / 2)
-    if lib.nettle_base16_decode_update(self.context, length, dst, len, src) ~= 1 then
+    local dst = ffi_new(types.uint8_t, floor((len + 1) / 2))
+    if lib.nettle_base16_decode_update(self.context, types.size_t_8, dst, len, src) ~= 1 then
         return nil, "unable to decode base16 data"
     end
-    local len = tonumber(length[0])
+    local len = tonumber(types.size_t_8[0])
     return ffi_str(dst, len), len
 end
 
@@ -83,23 +65,23 @@ local base16 = { encoder = encoder, decoder = decoder }
 function base16.encode(src)
     local len = #src
     local dln = len * 2
-    local dst = ffi_new(uint8t, dln)
+    local dst = ffi_new(types.uint8_t, dln)
     lib.nettle_base16_encode_update(dst, len, src)
     return ffi_str(dst, dln)
 end
 
 function base16.decode(src)
-    local ctx = ffi_new(ctxdec)
+    local ctx = ffi_new(context)
     local len = #src
-    local dst = ffi_new(uint8t, (len + 1) / 2)
+    local dst = ffi_new(types.uint8_t, floor((len + 1) / 2))
     lib.nettle_base16_decode_init(ctx)
-    if lib.nettle_base16_decode_update(ctx, length, dst, len, src) ~= 1 then
+    if lib.nettle_base16_decode_update(ctx, types.size_t_8, dst, len, src) ~= 1 then
         return nil, "unable to decode base16 data"
     end
     if lib.nettle_base16_decode_final(ctx) ~= 1 then
         return nil, "end of the base16 data is incorrect"
     end
-    return ffi_str(dst, length[0])
+    return ffi_str(dst, types.size_t_8[0])
 end
 
 return base16
